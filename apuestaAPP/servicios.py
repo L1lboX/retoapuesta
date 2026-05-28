@@ -1,7 +1,6 @@
 from decimal import Decimal
 
 from django.db import transaction
-from pytz import timezone
 from django.utils import timezone
 from apuestaAPP.models import ApuestaMaestra, ApuestaDetalle
 from cuentaAPP.models import Cuenta

@@ -7,11 +7,11 @@ class Command(BaseCommand):
         # Crear cuentas de ejemplo
         Cuenta.objects.create(
             tipo_cuenta=Cuenta.TipoCuenta.Casa,
-            usario = None)
+            usuario = None)
         
         Cuenta.objects.create(
             tipo_cuenta=Cuenta.TipoCuenta.Pendiente,
-            usario = None)
+            usuario = None)
         
 
         self.stdout.write(self.style.SUCCESS('Cuentas del sistema creadas exitosamente.'))
