@@ -21,20 +21,72 @@ from decouple import config
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
+def _read_env_file():
+    values = {}
+    env_path = BASE_DIR / '.env'
+    if not env_path.exists():
+        return values
+
+    for line in env_path.read_text(encoding='utf-8').splitlines():
+        line = line.strip()
+        if not line or line.startswith('#') or '=' not in line:
+            continue
+        key, value = line.split('=', 1)
+        values[key.strip()] = value.strip().strip('"').strip("'")
+    return values
+
+
+_ENV_FILE = _read_env_file()
+_MISSING = object()
+
+
+def _cast_bool(value):
+    value = str(value).strip().lower()
+    if value in {'1', 'true', 't', 'yes', 'y', 'on'}:
+        return True
+    if value in {'0', 'false', 'f', 'no', 'n', 'off'}:
+        return False
+    raise ValueError(f'Invalid boolean value: {value}')
+
+
+def env_config(name, default=_MISSING, cast=None):
+    # Prefer the project .env over generic shell variables such as DEBUG.
+    if name in _ENV_FILE:
+        value = _ENV_FILE[name]
+        if cast is bool:
+            return _cast_bool(value)
+        if cast:
+            return cast(value)
+        return value
+
+    kwargs = {}
+    if default is not _MISSING:
+        kwargs['default'] = default
+    if cast:
+        kwargs['cast'] = cast
+    return config(name, **kwargs)
+
+
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-2$tn1)!4nazys@7dzx(ns&q02n5_++v+fcax&6dxdvfan)@od4'
+SECRET_KEY = env_config('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = env_config('DEBUG', cast=bool, default=False)
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [
+    host.strip()
+    for host in env_config('ALLOWED_HOSTS', default='').split(',')
+    if host.strip()
+]
 
-SECRET_KEY = config('SECRET_KEY')
-DEBUG = config('DEBUG', cast=bool, default=False)
-ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='').split(',')
+DB_HOST = env_config('DB_HOST', default='db')
+DB_PORT = env_config('DB_PORT', default='5432')
+if DB_HOST == 'db' and not Path('/.dockerenv').exists():
+    DB_HOST = env_config('DB_LOCAL_HOST', default='localhost')
+    DB_PORT = env_config('DB_LOCAL_PORT', default='5433')
 
 
 # Application definition
@@ -88,12 +140,12 @@ WSGI_APPLICATION = 'config.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': config('DB_ENGINE'),
-        'NAME': config('DB_NAME'),
-        'USER': config('DB_USER'),
-        'PASSWORD': config('DB_PASSWORD'),
-        'HOST': config('DB_HOST', default='db'),
-        'PORT': config('DB_PORT', default='5432'),
+        'ENGINE': env_config('DB_ENGINE'),
+        'NAME': env_config('DB_NAME'),
+        'USER': env_config('DB_USER'),
+        'PASSWORD': env_config('DB_PASSWORD'),
+        'HOST': DB_HOST,
+        'PORT': DB_PORT,
     }
 }
 
